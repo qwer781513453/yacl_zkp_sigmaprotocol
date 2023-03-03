@@ -2,56 +2,52 @@
 #define SIGMAPROTOCOL_SIGMAPROTOCOL_H
 #pragma once
 
+#include <openssl/rand.h>
+
+#include <cstdio>
 #include <iostream>
 #include <stdexcept>
-#include <cstdio>
-#include <openssl/rand.h>
+
 #include "hash.h"
 
-namespace yacl::crypto{
+namespace yacl::crypto {
 
-class SigmaProtocolCommonInput{
-public:
-    SigmaProtocolCommonInput(const char* HashName = "sha256") : HashName(HashName) {}
+class SigmaProtocolCommonInput {
+ public:
+  SigmaProtocolCommonInput(const char* HashName = "sha256")
+      : HashName(HashName) {}
 
-    const char* HashName;
+  const char* HashName;
 
-    virtual ~SigmaProtocolCommonInput() {};
+  virtual ~SigmaProtocolCommonInput(){};
 };
 
-class SigmaProtocolProverInput{
-public:
-    virtual ~SigmaProtocolProverInput() {};
+class SigmaProtocolProverInput {
+ public:
+  virtual ~SigmaProtocolProverInput(){};
 };
 
-class SigmaProtocolResponseMessage
-{
-public:
-    virtual ~SigmaProtocolResponseMessage() {};
+class SigmaProtocolResponseMessage {
+ public:
+  virtual ~SigmaProtocolResponseMessage(){};
 };
 
-class SigmaProtocolProver
-{
-public:
-    virtual void ComputeFirstMessage() = 0;
+class SigmaProtocolProver {
+ public:
+  virtual void ComputeFirstMessage() = 0;
 
-    virtual void ComputeSecondMessage() = 0;
+  virtual void ComputeSecondMessage() = 0;
 
-    virtual ~SigmaProtocolProver() {};
+  virtual ~SigmaProtocolProver(){};
 };
 
-class SigmaProtocolVerifier
-{
-public:
-    virtual bool Verify() = 0;
+class SigmaProtocolVerifier {
+ public:
+  virtual bool Verify() = 0;
 
-    virtual ~SigmaProtocolVerifier() {};
-
+  virtual ~SigmaProtocolVerifier(){};
 };
 
+}  // namespace yacl::crypto
 
-
-}
-
-
-#endif //SIGMAPROTOCOL_SIGMAPROTOCOL_H
+#endif  // SIGMAPROTOCOL_SIGMAPROTOCOL_H

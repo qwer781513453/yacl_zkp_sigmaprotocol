@@ -104,6 +104,9 @@ bool DiffieHellmanTripleVerifierShort::Verify() {
   BN_free(challenge);
   EC_POINT_free(tmp1);
   BN_CTX_free(ctx);
+  EC_POINT_free(T[0]);
+  EC_POINT_free(T[1]);
+  EC_POINT_free(T[2]);
   if (res == -1) throw std::invalid_argument("EC_POINT_cmp error.\n");
 
   return (res == 0);

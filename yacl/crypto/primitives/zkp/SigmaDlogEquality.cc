@@ -78,6 +78,8 @@ bool DlogEqualityVerifierShort::Verify() {
 
   BN_CTX_free(ctx);
   EC_POINT_free(tmp1);
+  EC_POINT_free(T[0]);
+  EC_POINT_free(T[1]);
   BN_free(challenge);
   if (res == -1) throw std::invalid_argument("EC_POINT_cmp error.\n");
 

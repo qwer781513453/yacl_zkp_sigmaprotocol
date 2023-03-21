@@ -1,9 +1,3 @@
-//
-// Created by wx on 23-1-4.
-//
-#ifndef SIGMAPROTOCOL_SIGMADLOGEQUALITY_CC
-#define SIGMAPROTOCOL_SIGMADLOGEQUALITY_CC
-
 #include "SigmaDlogEquality.h"
 
 #include <cassert>
@@ -156,5 +150,3 @@ BIGNUM* DlogEqualityGetChallenge(const DlogEqualityCommonInput& params_,
 }
 
 }  // namespace yacl::crypto
-
-#endif  // SIGMAPROTOCOL_SIGMADLOGEQUALITY_CC

@@ -19,6 +19,8 @@ std::chrono::duration<double> time_span;
 
 double p_time, v_time;
 
+// This function is for testing purposes only, and is not and cannot be used to
+// generate the generators of Pedersen Commitment Protocol
 void SampleGenerator(const EC_GROUP* curve, EC_POINT* g) {
   BIGNUM* p = BN_new();
   BIGNUM* x = BN_new();

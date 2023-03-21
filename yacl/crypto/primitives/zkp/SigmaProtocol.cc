@@ -36,7 +36,7 @@ BIGNUM* SigmaProtocolGetChallenge(const SigmaProtocolCommonInput* params,
     length[i] = EC_POINT_point2buf(params->group, params->G[i],
                                    POINT_CONVERSION_COMPRESSED, &data[i], ctx);
   }
-  for (size_t i = 0; i < T.size(); i++) {
+  for (size_t i = params->G.size(); i < n; i++) {
     length[i] = EC_POINT_point2buf(params->group, T[i],
                                    POINT_CONVERSION_COMPRESSED, &data[i], ctx);
   }

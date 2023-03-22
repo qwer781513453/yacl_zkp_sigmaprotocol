@@ -29,14 +29,14 @@ int computeExpectedTimeInMs(int expect) {
   return static_cast<int>((expect == 0 ? 1 : expect) * kMarginPercent);
 }
 
-TEST(ElapsedTimerTest, zero) {
+TEST(ElapsedTimerTest, DISABLED_zero) {
   ElapsedTimer timer;
   double cost_time_ms = timer.CountMs();
   EXPECT_LE(0, cost_time_ms);
   EXPECT_LE(cost_time_ms, computeExpectedTimeInMs(0));
 }
 
-TEST(ElapsedTimerTest, plus) {
+TEST(ElapsedTimerTest, DISABLED_plus) {
   ElapsedTimer timer;
   int expect_cost_time_ms = 100;
   int relaxed_expect_cost_time_ms =

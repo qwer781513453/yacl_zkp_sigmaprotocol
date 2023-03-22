@@ -22,7 +22,7 @@
 #include <thread>
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/primitives/ot/test_utils.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
@@ -41,7 +41,7 @@ TEST_P(KkrtOtExtTest, Works) {
   auto contexts = link::test::SetupWorld(kWorldSize);
 
   // KKRT requires 512 width.
-  auto base_ot = MakeBaseOts(512);
+  auto base_ot = MockRots(512);
 
   const size_t num_ot = GetParam().num_ot;
   std::vector<uint128_t> recv_out(num_ot);
@@ -74,14 +74,13 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, KkrtOtExtTest,
                                          TestParams{129},   //
                                          TestParams{4095},  //
                                          TestParams{4096},  //
-                                         TestParams{65536}  //
-                                         ));
+                                         TestParams{65536}));
 
 TEST(KkrtOtExtEdgeTest, Test) {
   // GIVEN
   const int kWorldSize = 2;
   auto contexts = link::test::SetupWorld(kWorldSize);
-  auto base_ot = MakeBaseOts(512);
+  auto base_ot = MockRots(512);
 
   size_t kNumOt = 16;
   // WHEN THEN
@@ -116,7 +115,7 @@ TEST_P(KkrtOtExtTest2, Works) {
   auto contexts = link::test::SetupWorld(kWorldSize);
 
   // KKRT requires 512 width.
-  auto base_ot = MakeBaseOts(512);
+  auto base_ot = MockRots(512);
 
   const size_t num_ot = GetParam().num_ot;
   std::vector<uint128_t> recv_out(num_ot);
@@ -132,8 +131,12 @@ TEST_P(KkrtOtExtTest2, Works) {
   KkrtOtExtSender kkrtSender;
   KkrtOtExtReceiver kkrtReceiver;
 
-  kkrtSender.Init(contexts[0], base_ot.recv, num_ot);
-  kkrtReceiver.Init(contexts[1], base_ot.send, num_ot);
+  std::future<void> send_init =
+      std::async([&] { kkrtSender.Init(contexts[0], base_ot.recv, num_ot); });
+  std::future<void> recv_init =
+      std::async([&] { kkrtReceiver.Init(contexts[1], base_ot.send, num_ot); });
+  send_init.get();
+  recv_init.get();
 
   // kkrtSender.setBatchSize(kBatchSize);
   // kkrtReceiver.setBatchSize(kBatchSize);
@@ -191,7 +194,6 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances2, KkrtOtExtTest2,
                                          TestParams{897},   //
                                          TestParams{4095},  //
                                          TestParams{4096},  //
-                                         TestParams{65536}  //
-                                         ));
+                                         TestParams{65536}));
 
 }  // namespace yacl::crypto

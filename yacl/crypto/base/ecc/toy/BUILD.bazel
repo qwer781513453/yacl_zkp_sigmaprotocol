@@ -1,4 +1,4 @@
-# Copyright 2022 Ant Group Co., Ltd.
+# Copyright 2023 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,25 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary")
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
-yacl_cc_binary(
-    name = "ot_bench",
+yacl_cc_library(
+    name = "toy",
+    deps = [
+        ":weierstrass",
+    ],
+)
+
+yacl_cc_library(
+    name = "weierstrass",
     srcs = [
-        "ot_bench.cc",
-        "ot_bench.h",
+        "weierstrass.cc",
+    ],
+    hdrs = [
+        "weierstrass.h",
     ],
     deps = [
-        "//yacl/crypto/primitives/ot:base_ot",
-        "//yacl/crypto/primitives/ot:iknp_ote",
-        "//yacl/crypto/primitives/ot:kkrt_ote",
-        "//yacl/crypto/primitives/ot:sgrr_ote",
-        "//yacl/crypto/primitives/ot:test_utils",
-        "//yacl/crypto/utils:rand",
-        "//yacl/link:test_util",
-        "@com_github_google_benchmark//:benchmark_main",
-        "@com_google_absl//absl/numeric:bits",
+        "//yacl/crypto/base/ecc:spi",
+    ],
+    alwayslink = 1,
+)
+
+yacl_cc_test(
+    name = "weierstrass_test",
+    srcs = ["weierstrass_test.cc"],
+    deps = [
+        ":weierstrass",
     ],
 )

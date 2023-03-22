@@ -20,8 +20,6 @@ yacl_cc_library(
     name = "rand",
     srcs = ["rand.cc"],
     hdrs = ["rand.h"],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         "//yacl/base:dynamic_bitset",
         "//yacl/base:exception",
@@ -38,5 +36,13 @@ yacl_cc_binary(
     deps = [
         ":rand",
         "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yacl_cc_library(
+    name = "math",
+    hdrs = ["math.h"],
+    deps = [
+        "@com_google_absl//absl/strings",
     ],
 )

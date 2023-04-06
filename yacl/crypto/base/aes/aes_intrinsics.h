@@ -88,7 +88,7 @@ struct AES_KEY {
 };
 
 // set aes encryption key
-#define EXPAND_ASSIST(v1, v2, v3, v4, shuff_const, aes_const)           \
+#define AES_EXPAND_ASSIST(v1, v2, v3, v4, shuff_const, aes_const)       \
   v2 = _mm_aeskeygenassist_si128(v4, aes_const);                        \
   v3 = _mm_castps_si128(                                                \
       _mm_shuffle_ps(_mm_castsi128_ps(v3), _mm_castsi128_ps(v1), 16));  \
@@ -110,32 +110,35 @@ inline void
   __m128i *kp = key->rd_key;
   kp[0] = x0 = userkey;
   x2 = _mm_setzero_si128();
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 1);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 1);
   kp[1] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 2);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 2);
   kp[2] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 4);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 4);
   kp[3] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 8);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 8);
   kp[4] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 16);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 16);
   kp[5] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 32);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 32);
   kp[6] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 64);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 64);
   kp[7] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 128);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 128);
   kp[8] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 27);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 27);
   kp[9] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 54);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 54);
   kp[10] = x0;
   key->rounds = 10;
 }
 
 // encrypt blocks with given key
+inline void
 #ifdef __x86_64__
-__attribute__((target("aes,sse2"))) inline void AES_ecb_encrypt_blks(
+__attribute__((target("aes,sse2")))
+#endif
+AES_ecb_encrypt_blks(
     const __m128i *in_blks, __m128i *out_blks, size_t nblks,
     const AES_KEY *key) {
   for (size_t i = 0; i < nblks; ++i) {
@@ -146,33 +149,6 @@ __attribute__((target("aes,sse2"))) inline void AES_ecb_encrypt_blks(
     out_blks[i] = _mm_aesenclast_si128(out_blks[i], key->rd_key[key->rounds]);
   }
 }
-#elif __aarch64__
-inline void AES_ecb_encrypt_blks(const __m128i *_in_blks, __m128i *_out_blks,
-                                 unsigned int nblks, const AES_KEY *key) {
-  uint8x16_t *in_first = (uint8x16_t *)(_in_blks);
-  uint8x16_t *out_first = (uint8x16_t *)(_out_blks);
-  uint8x16_t *keys = (uint8x16_t *)(key->rd_key);
-
-  uint8x16_t *in_iter = in_first;
-  uint8x16_t *out_iter = out_first;
-  for (unsigned int i = 0; i < nblks; ++i, ++in_iter, ++out_iter) {
-    *out_iter = vaesmcq_u8(vaeseq_u8(*in_iter, (uint8x16_t)keys[0]));
-  }
-
-  for (unsigned int j = 1; j < key->rounds - 1; ++j) {
-    uint8x16_t key_j = (uint8x16_t)keys[j];
-    uint8x16_t *iter = out_first;
-    for (unsigned int i = 0; i < nblks; ++i, ++iter) {
-      *iter = vaesmcq_u8(vaeseq_u8(*iter, key_j));
-    }
-  }
-  uint8x16_t last_key = (uint8x16_t)keys[key->rounds - 1];
-  uint8x16_t *iter = out_first;
-  for (unsigned int i = 0; i < nblks; ++i, ++iter) {
-    *iter = vaeseq_u8(*iter, last_key) ^ (uint8x16_t)keys[key->rounds];
-  }
-}
-#endif
 
 // (inplace) encrypt blocks with given key
 #ifdef __GNUC__

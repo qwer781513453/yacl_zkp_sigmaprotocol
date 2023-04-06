@@ -1,0 +1,19 @@
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "zkp",
+    srcs = [
+        "SigmaProtocol.cc",
+    ],
+    hdrs = [
+        "SigmaProtocol.h",
+    ],
+    deps = [
+        "//yacl/crypto/base/ecc",
+        "//yacl/crypto/base/hash:ssl_hash",
+        "//yacl/crypto/base/ecc/openssl:openssl",
+    ],
+    alwayslink = 1,
+)

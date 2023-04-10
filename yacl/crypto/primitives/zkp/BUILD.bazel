@@ -14,6 +14,15 @@ yacl_cc_library(
         "//yacl/crypto/base/ecc",
         "//yacl/crypto/base/hash:ssl_hash",
         "//yacl/crypto/base/ecc/openssl:openssl",
+        "//yacl/crypto/tools:random_oracle",
     ],
     alwayslink = 1,
+)
+
+yacl_cc_test(
+    name = "SigmaProtocol_test",
+    srcs = ["SigmaProtocol_test.cc"],
+    deps = [
+        ":zkp"
+    ]
 )

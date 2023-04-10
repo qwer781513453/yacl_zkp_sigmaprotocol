@@ -10,14 +10,14 @@ SigmaNIBatchProof SigmaProtocol::ProveBatch(
   ret_proof.proof.reserve(meta_.num_witness);
   ret_proof.type = meta_.type;
   // compute first message : rnd_statement
-  ComputeFirstMsg(ret_proof.rnd_statement, rnd_witness);
+  ret_proof.rnd_statement = ToStatement(rnd_witness);
 
   // get challenge: Hash(generators, statement ,rnd_statement)
   MPInt challenge =
       GetChallenge(statement, ret_proof.rnd_statement, other_info);
 
   // compute second message : proof
-  ComputeSecondMsg(ret_proof.proof, witness, rnd_witness, challenge);
+  ret_proof.proof = ToProof(witness, rnd_witness, challenge);
 
   return ret_proof;
 }
@@ -32,22 +32,11 @@ bool SigmaProtocol::VerifyBatch(const std::vector<EcPoint>& statement,
   uint32_t i;
   bool res = true;
   switch (meta_.type) {
-    // verify: rnd_statement[i] + challenge * statement[i] ==
-    // generator_ref_[i] * proof.proof[i]
-    case SigmaType::Dlog:
-      YACL_ENFORCE((meta_.num_generator == meta_.num_statement) &&
-                   (meta_.num_generator == meta_.num_witness));
-      for (i = 0; i < meta_.num_statement; i++) {
-        LHS = group_ref_->Add(proof.rnd_statement[i],
-                              group_ref_->Mul(statement[i], challenge));
-        RHS = group_ref_->Mul(generator_ref_[i], proof.proof[i]);
-        res &= group_ref_->PointEqual(LHS, RHS);
-      }
-      break;
-
     // verify: rnd_statement[0] + challenge * statement[0] == (generator_ref_[0]
     // * proof.proof[0]) + ... + (generator_ref_[n] * proof.proof[n])
+    case SigmaType::Dlog:
     case SigmaType::Pedersen:
+    case SigmaType::Representation:
       YACL_ENFORCE((meta_.num_statement == 1) &&
                    (meta_.num_generator == meta_.num_witness));
       LHS = group_ref_->Add(group_ref_->Mul(statement[0], challenge),
@@ -58,9 +47,24 @@ bool SigmaProtocol::VerifyBatch(const std::vector<EcPoint>& statement,
       }
       res &= group_ref_->PointEqual(LHS, RHS);
       break;
+
+    // verify: rnd_statement[i] + challenge * statement[i] ==
+    // generator_ref_[i] * proof.proof[i]
+    case SigmaType::SeveralDlog:
+      YACL_ENFORCE((meta_.num_generator == meta_.num_statement) &&
+                   (meta_.num_generator == meta_.num_witness));
+      for (i = 0; i < meta_.num_statement; i++) {
+        LHS = group_ref_->Add(proof.rnd_statement[i],
+                              group_ref_->Mul(statement[i], challenge));
+        RHS = group_ref_->Mul(generator_ref_[i], proof.proof[i]);
+        res &= group_ref_->PointEqual(LHS, RHS);
+      }
+      break;
+
     // verify: rnd_statement[i] + challenge * statement[i] ==
     // generator_ref_[i] * proof.proof[0]
     case SigmaType::DlogEq:
+    case SigmaType::SeveralDlogEq:
     case SigmaType::DHTripple:
       YACL_ENFORCE((meta_.num_witness == 1) &&
                    (meta_.num_statement == meta_.num_generator));
@@ -74,7 +78,8 @@ bool SigmaProtocol::VerifyBatch(const std::vector<EcPoint>& statement,
 
     default:
       YACL_THROW(
-          "zkp lib only support Dlog, Pedersen, DlogEq, DHTripple "
+          "zkp lib only support Dlog, Pedersen, Representation, SeveralDlog, "
+          "DlogEq, SeveralDlogEq, DHTripple, "
           "SigmaProtocol now.");
   }
   return res;
@@ -85,16 +90,14 @@ SigmaNIShortProof SigmaProtocol::ProveShort(
     const std::vector<MPInt>& rnd_witness, ByteContainerView other_info) const {
   SigmaNIShortProof ret_proof;
   std::vector<EcPoint> rnd_statement;
-  rnd_statement.reserve(meta_.num_witness);
-  ret_proof.proof.reserve(meta_.num_witness);
+  rnd_statement = ToStatement(rnd_witness);
   ret_proof.type = meta_.type;
 
-  ComputeFirstMsg(rnd_statement, rnd_witness);
   // get challenge: Hash(generators, statement ,rnd_statement)
   MPInt challenge = GetChallenge(statement, rnd_statement, other_info);
 
   // compute second message : proof
-  ComputeSecondMsg(ret_proof.proof, witness, rnd_witness, challenge);
+  ret_proof.proof = ToProof(witness, rnd_witness, challenge);
 
   return ret_proof;
 }
@@ -111,21 +114,11 @@ bool SigmaProtocol::VerifyShort(const std::vector<EcPoint>& statement,
 
   // compute rnd_statement
   switch (meta_.type) {
-    // rnd_statement[i] = (generator_ref_[i] * proof.proof[i]) - (challenge *
-    // statement[i])
-    case SigmaType::Dlog:
-      YACL_ENFORCE((meta_.num_generator == meta_.num_statement) &&
-                   (meta_.num_generator == meta_.num_witness));
-      for (i = 0; i < meta_.num_statement; i++) {
-        tmp1 = group_ref_->Mul(generator_ref_[i], proof.proof[i]);
-        tmp2 = group_ref_->Mul(statement[i], proof.challenge);
-        rnd_statement.emplace_back(group_ref_->Sub(tmp1, tmp2));
-      }
-      break;
-
     // rnd_statement[0] == (generator_ref_[0] * proof.proof[0])  + ...
     //  + (generator_ref_[n] * proof.proof[n]) - (challenge *statement[0])
+    case SigmaType::Dlog:
     case SigmaType::Pedersen:
+    case SigmaType::Representation:
       YACL_ENFORCE((meta_.num_statement == 1) &&
                    (meta_.num_generator == meta_.num_witness));
       tmp2 = group_ref_->Mul(statement[0], proof.challenge);
@@ -136,9 +129,22 @@ bool SigmaProtocol::VerifyShort(const std::vector<EcPoint>& statement,
       rnd_statement.emplace_back(group_ref_->Sub(tmp1, tmp2));
       break;
 
+    // rnd_statement[i] = (generator_ref_[i] * proof.proof[i]) - (challenge *
+    // statement[i])
+    case SigmaType::SeveralDlog:
+      YACL_ENFORCE((meta_.num_generator == meta_.num_statement) &&
+                   (meta_.num_generator == meta_.num_witness));
+      for (i = 0; i < meta_.num_statement; i++) {
+        tmp1 = group_ref_->Mul(generator_ref_[i], proof.proof[i]);
+        tmp2 = group_ref_->Mul(statement[i], proof.challenge);
+        rnd_statement.emplace_back(group_ref_->Sub(tmp1, tmp2));
+      }
+      break;
+
     // verify: rnd_statement[i] == (generator_ref_[i] * proof.proof[0]) -
     // (challenge * statement[i])
     case SigmaType::DlogEq:
+    case SigmaType::SeveralDlogEq:
     case SigmaType::DHTripple:
       YACL_ENFORCE((meta_.num_witness == 1) &&
                    (meta_.num_statement == meta_.num_generator));
@@ -151,7 +157,8 @@ bool SigmaProtocol::VerifyShort(const std::vector<EcPoint>& statement,
 
     default:
       YACL_THROW(
-          "zkp lib only support Dlog, Pedersen, DlogEq, DHTripple "
+          "zkp lib only support Dlog, Pedersen, Representation, SeveralDlog, "
+          "DlogEq, SeveralDlogEq, DHTripple, "
           "SigmaProtocol now.");
   }
 
@@ -161,84 +168,94 @@ bool SigmaProtocol::VerifyShort(const std::vector<EcPoint>& statement,
   return (challenge == proof.challenge);
 }
 
-void SigmaProtocol::ComputeFirstMsg(
-    std::vector<EcPoint>& rnd_statement,
-    const std::vector<MPInt>& rnd_witness) const {
+std::vector<EcPoint> SigmaProtocol::ToStatement(
+    const std::vector<MPInt>& witness) const {
+  std::vector<EcPoint> statement;
+  statement.reserve(meta_.num_statement);
   // Protocols are classified into the following types based on the one way
   // homomorphism functions used.
   uint32_t i;
   switch (meta_.type) {
-    // Proof Knowledge of Several Values: G_i -> H_i, f_i(x_i) = h_i^x_i
+    // Proof of Knowledge of a Representation: Z_q^m -> H, f(x_1, x_2,...,x_m) =
+    // h_1^{x_1} +... +h_m^{xm}
     case SigmaType::Dlog:
-      YACL_ENFORCE((meta_.num_generator == meta_.num_statement) &&
+    case SigmaType::Pedersen:
+    case SigmaType::Representation:
+      YACL_ENFORCE((meta_.num_statement == 1) &&
                    (meta_.num_generator == meta_.num_witness));
-      for (i = 0; i < meta_.num_generator; i++) {
-        rnd_statement.emplace_back(
-            group_ref_->Mul(generator_ref_[i], rnd_witness[i]));
+      statement.emplace_back(group_ref_->Mul(generator_ref_[0], witness[0]));
+      for (i = 1; i < meta_.num_generator; i++) {
+        statement[0] = group_ref_->Add(
+            statement[0], group_ref_->Mul(generator_ref_[i], witness[i]));
       }
       break;
 
-    // Proof of Knowledge of a Representation: Z_q^m -> H, f(x_1, x_2,...,x_m) =
-    // h_1^{x_1} +... +h_m^{xm}
-    case SigmaType::Pedersen:
-      YACL_ENFORCE((meta_.num_statement == 1) &&
+    // Proof Knowledge of Several Values: G_i -> H_i, f_i(x_i) = h_i^x_i
+    case SigmaType::SeveralDlog:
+      YACL_ENFORCE((meta_.num_generator == meta_.num_statement) &&
                    (meta_.num_generator == meta_.num_witness));
-      rnd_statement.emplace_back(
-          group_ref_->Mul(generator_ref_[0], rnd_witness[0]));
-      for (i = 1; i < meta_.num_generator; i++) {
-        rnd_statement[0] =
-            group_ref_->Add(rnd_statement[0],
-                            group_ref_->Mul(generator_ref_[i], rnd_witness[i]));
+      for (i = 0; i < meta_.num_generator; i++) {
+        statement.emplace_back(group_ref_->Mul(generator_ref_[i], witness[i]));
       }
       break;
+
     // Proof of Equality of Embedded Values: G -> H_1 \times... H_n \times
     // f(x) = (h_1^x, h_2^x, ..., h_n^x)
     case SigmaType::DlogEq:
     case SigmaType::DHTripple:
+    case SigmaType::SeveralDlogEq:
       YACL_ENFORCE((meta_.num_witness == 1) &&
                    (meta_.num_statement == meta_.num_generator));
       for (i = 0; i < meta_.num_generator; i++) {
-        rnd_statement.emplace_back(
-            group_ref_->Mul(generator_ref_[i], rnd_witness[0]));
+        statement.emplace_back(group_ref_->Mul(generator_ref_[i], witness[0]));
       }
       break;
 
     default:
       YACL_THROW(
-          "zkp lib only support Dlog, Pedersen, DlogEq, DHTripple "
+          "zkp lib only support Dlog, Pedersen, Representation, SeveralDlog, "
+          "DlogEq, SeveralDlogEq, DHTripple, "
           "SigmaProtocol now.");
   }
+  return statement;
 }
 MPInt SigmaProtocol::GetChallenge(const std::vector<EcPoint>& statement,
                                   const std::vector<EcPoint>& rnd_statement,
                                   ByteContainerView other_info) const {
-  SslHash hash_fun(hash_);
+  RandomOracle ro(hash_, 32);
+  std::vector<Buffer> buf_vec;
+  buf_vec.reserve(meta_.num_statement * 2 + meta_.num_generator);
   uint32_t i;
+
   for (i = 0; i < meta_.num_generator; i++) {
-    hash_fun.Update(group_ref_->SerializePoint(generator_ref_[i]));
+    buf_vec.emplace_back(group_ref_->SerializePoint(generator_ref_[i]));
   }
 
   for (i = 0; i < meta_.num_statement; i++) {
-    hash_fun.Update(group_ref_->SerializePoint(statement[i]));
+    buf_vec.emplace_back(group_ref_->SerializePoint(statement[i]));
   }
 
   for (i = 0; i < meta_.num_statement; i++) {
-    hash_fun.Update(group_ref_->SerializePoint(rnd_statement[i]));
+    buf_vec.emplace_back(group_ref_->SerializePoint(rnd_statement[i]));
   }
 
-  hash_fun.Update(other_info);
-  const char* byte = (const char*)((hash_fun.CumulativeHash()).data());
+  ByteContainerView byte(buf_vec.data(), buf_vec.size());
 
-  return (MPInt)byte;
+  const char* out =
+      (const char*)((ro.Gen<std::array<uint8_t, 32>>({byte, other_info}))
+                        .data());
+  return (MPInt)out;
 }
 
-void SigmaProtocol::ComputeSecondMsg(std::vector<MPInt>& proof,
-                                     const std::vector<MPInt>& witness,
-                                     const std::vector<MPInt>& rnd_witness,
-                                     const MPInt& challenge) const {
+std::vector<MPInt> SigmaProtocol::ToProof(const std::vector<MPInt>& witness,
+                                          const std::vector<MPInt>& rnd_witness,
+                                          const MPInt& challenge) const {
+  std::vector<MPInt> proof;
+  proof.reserve(meta_.num_witness);
   for (uint32_t i = 0; i < meta_.num_witness; i++) {
     proof.emplace_back((challenge * witness[i] + rnd_witness[i]) % order_);
   }
+  return proof;
 }
 
 }  // namespace yacl::crypto

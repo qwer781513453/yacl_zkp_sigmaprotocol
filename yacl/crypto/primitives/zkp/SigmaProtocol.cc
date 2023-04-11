@@ -1,14 +1,15 @@
 #include "yacl/crypto/primitives/zkp/SigmaProtocol.h"
 
+#include "yacl/base/dynamic_bitset.h"
+
 namespace yacl::crypto {
 
 SigmaNIBatchProof SigmaProtocol::ProveBatch(
     const std::vector<MPInt>& witness, const std::vector<EcPoint>& statement,
     const std::vector<MPInt>& rnd_witness, ByteContainerView other_info) const {
   SigmaNIBatchProof ret_proof;
-  ret_proof.rnd_statement.reserve(meta_.num_statement);
-  ret_proof.proof.reserve(meta_.num_witness);
   ret_proof.type = meta_.type;
+
   // compute first message : rnd_statement
   ret_proof.rnd_statement = ToStatement(rnd_witness);
 
@@ -94,10 +95,10 @@ SigmaNIShortProof SigmaProtocol::ProveShort(
   ret_proof.type = meta_.type;
 
   // get challenge: Hash(generators, statement ,rnd_statement)
-  MPInt challenge = GetChallenge(statement, rnd_statement, other_info);
+  ret_proof.challenge = GetChallenge(statement, rnd_statement, other_info);
 
   // compute second message : proof
-  ret_proof.proof = ToProof(witness, rnd_witness, challenge);
+  ret_proof.proof = ToProof(witness, rnd_witness, ret_proof.challenge);
 
   return ret_proof;
 }
@@ -239,12 +240,13 @@ MPInt SigmaProtocol::GetChallenge(const std::vector<EcPoint>& statement,
     buf_vec.emplace_back(group_ref_->SerializePoint(rnd_statement[i]));
   }
 
-  ByteContainerView byte(buf_vec.data(), buf_vec.size());
+  auto out = ro.Gen<std::array<uint8_t, 32>>({*(buf_vec.data()), other_info});
 
-  const char* out =
-      (const char*)((ro.Gen<std::array<uint8_t, 32>>({byte, other_info}))
-                        .data());
-  return (MPInt)out;
+  // TODO: replace this step with BytesToMPInt();
+  dynamic_bitset<uint8_t> binary;
+  binary.append(out.begin(), out.end());
+  MPInt hash_bn(binary.to_string(), 2);
+  return hash_bn;
 }
 
 std::vector<MPInt> SigmaProtocol::ToProof(const std::vector<MPInt>& witness,

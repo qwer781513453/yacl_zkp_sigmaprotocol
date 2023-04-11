@@ -15,6 +15,7 @@ yacl_cc_library(
         "//yacl/crypto/base/hash:ssl_hash",
         "//yacl/crypto/base/ecc/openssl:openssl",
         "//yacl/crypto/tools:random_oracle",
+        "//yacl/base:dynamic_bitset",
     ],
     alwayslink = 1,
 )

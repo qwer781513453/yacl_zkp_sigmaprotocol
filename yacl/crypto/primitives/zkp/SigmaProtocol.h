@@ -8,6 +8,14 @@
 #include "yacl/crypto/base/hash/ssl_hash.h"
 #include "yacl/crypto/tools/random_oracle.h"
 
+// This resource implements an improved SigmaProtocol():
+// let n be a positive integer and let i \in [1,n].
+// For a given vector statement = {Z_i}_{i \in [1,n]}, the protocol is a proof
+// of knowledge of a vector witness = {[x_i]}_{i \in[1,n]} such that
+// Z_i = [x_i] , where [x_i] = OneWayHomomorphismFun(x).
+// Now this lib only implements: Dlog, Pedersen, Representation, SeveralDlog,
+// DlogEq,SeveralDlogEq and DHTripple protocols.
+
 namespace yacl::crypto {
 
 enum class SigmaType {

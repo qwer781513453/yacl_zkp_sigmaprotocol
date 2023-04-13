@@ -28,10 +28,9 @@ bool SigmaProtocol::VerifyBatch(const std::vector<EcPoint>& statement,
                                 ByteContainerView other_info) const {
   MPInt challenge = GetChallenge(statement, proof.rnd_statement, other_info);
 
-  EcPoint LHS = group_ref_->MulBase(0_mp);
-  EcPoint RHS = group_ref_->MulBase(0_mp);
   uint32_t i;
   bool res = true;
+  EcPoint RHS = group_ref_->MulBase(0_mp);
   switch (meta_.type) {
     // verify: rnd_statement[0] + challenge * statement[0] == (generator_ref_[0]
     // * proof.proof[0]) + ... + (generator_ref_[n] * proof.proof[n])
@@ -40,25 +39,25 @@ bool SigmaProtocol::VerifyBatch(const std::vector<EcPoint>& statement,
     case SigmaType::Representation:
       YACL_ENFORCE((meta_.num_statement == 1) &&
                    (meta_.num_generator == meta_.num_witness));
-      LHS = group_ref_->Add(group_ref_->Mul(statement[0], challenge),
-                            proof.rnd_statement[0]);
       for (i = 0; i < meta_.num_witness; i++) {
         RHS = group_ref_->Add(
             RHS, group_ref_->Mul(generator_ref_[i], proof.proof[i]));
       }
-      res &= group_ref_->PointEqual(LHS, RHS);
+      res &= group_ref_->PointEqual(
+          group_ref_->Add(group_ref_->Mul(statement[0], challenge),
+                          proof.rnd_statement[0]),
+          RHS);
       break;
-
     // verify: rnd_statement[i] + challenge * statement[i] ==
     // generator_ref_[i] * proof.proof[i]
     case SigmaType::SeveralDlog:
       YACL_ENFORCE((meta_.num_generator == meta_.num_statement) &&
                    (meta_.num_generator == meta_.num_witness));
       for (i = 0; i < meta_.num_statement; i++) {
-        LHS = group_ref_->Add(proof.rnd_statement[i],
-                              group_ref_->Mul(statement[i], challenge));
-        RHS = group_ref_->Mul(generator_ref_[i], proof.proof[i]);
-        res &= group_ref_->PointEqual(LHS, RHS);
+        res &= group_ref_->PointEqual(
+            group_ref_->Add(proof.rnd_statement[i],
+                            group_ref_->Mul(statement[i], challenge)),
+            group_ref_->Mul(generator_ref_[i], proof.proof[i]));
       }
       break;
 
@@ -70,10 +69,10 @@ bool SigmaProtocol::VerifyBatch(const std::vector<EcPoint>& statement,
       YACL_ENFORCE((meta_.num_witness == 1) &&
                    (meta_.num_statement == meta_.num_generator));
       for (i = 0; i < meta_.num_statement; i++) {
-        LHS = group_ref_->Add(proof.rnd_statement[i],
-                              group_ref_->Mul(statement[i], challenge));
-        RHS = group_ref_->Mul(generator_ref_[i], proof.proof[0]);
-        res &= group_ref_->PointEqual(LHS, RHS);
+        res &= group_ref_->PointEqual(
+            group_ref_->Add(proof.rnd_statement[i],
+                            group_ref_->Mul(statement[i], challenge)),
+            group_ref_->Mul(generator_ref_[i], proof.proof[0]));
       }
       break;
 

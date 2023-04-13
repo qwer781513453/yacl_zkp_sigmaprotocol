@@ -7,52 +7,52 @@ namespace yacl::crypto::test {
 class SigmaProtocolTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    curve = openssl::OpensslGroup::Create(GetCurveMetaByName("sm2"));
-    n = curve->GetOrder();
-    auto cofactor = curve->GetCofactor();
+    curve_ = openssl::OpensslGroup::Create(GetCurveMetaByName("sm2"));
+    n_ = curve_->GetOrder();
+    auto cofactor = curve_->GetCofactor();
 
-    witness.resize(3, (MPInt)0);
-    rnd_witness.resize(3, (MPInt)0);
-    generators.reserve(3);
+    witness_.resize(3, (MPInt)0);
+    rnd_witness_.resize(3, (MPInt)0);
+    generators_.reserve(3);
     for (uint32_t i = 0; i < 3; i++) {
       // init random witness & rnd_witness
-      MPInt::RandomLtN(n, &witness[0]);
-      MPInt::RandomLtN(n, &rnd_witness[0]);
+      MPInt::RandomLtN(n_, &witness_[0]);
+      MPInt::RandomLtN(n_, &rnd_witness_[0]);
 
       // sample generators
-      generators.emplace_back(curve->MulBase(0_mp));
+      generators_.emplace_back(curve_->MulBase(0_mp));
       uint32_t j = 0;
-      EcPoint tmp = curve->MulBase(0_mp);
-      while (curve->IsInfinity(tmp)) {
-        tmp = curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA2,
-                                 fmt::format("id{}", j++));
-        generators[i] = tmp;
-        curve->MulInplace(&tmp, cofactor);
+      EcPoint tmp = curve_->MulBase(0_mp);
+      while (curve_->IsInfinity(tmp)) {
+        tmp = curve_->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA2,
+                                  fmt::format("id{}", j++));
+        generators_[i] = tmp;
+        curve_->MulInplace(&tmp, cofactor);
       }
     }
   }
 
   void StartTest(SigmaMeta SigmaType, ByteContainerView other_info) {
-    SigmaProtocol protocol(curve, generators, SigmaType);
-    std::vector<EcPoint> statement = protocol.ToStatement(witness);
+    SigmaProtocol protocol(curve_, generators_, SigmaType);
+    std::vector<EcPoint> statement = protocol.ToStatement(witness_);
 
     auto proof_batch =
-        protocol.ProveBatch(witness, statement, rnd_witness, other_info);
+        protocol.ProveBatch(witness_, statement, rnd_witness_, other_info);
 
     EXPECT_TRUE(protocol.VerifyBatch(statement, proof_batch, other_info));
 
     auto proof_short =
-        protocol.ProveShort(witness, statement, rnd_witness, other_info);
+        protocol.ProveShort(witness_, statement, rnd_witness_, other_info);
 
     EXPECT_TRUE(protocol.VerifyShort(statement, proof_short, other_info));
   }
 
-  std::unique_ptr<yacl::crypto::EcGroup> curve;
-  MPInt n;
+  std::unique_ptr<yacl::crypto::EcGroup> curve_;
+  MPInt n_;
 
-  std::vector<MPInt> witness;
-  std::vector<MPInt> rnd_witness;
-  std::vector<EcPoint> generators;
+  std::vector<MPInt> witness_;
+  std::vector<MPInt> rnd_witness_;
+  std::vector<EcPoint> generators_;
 };
 
 TEST_F(SigmaProtocolTest, DlogTest) {

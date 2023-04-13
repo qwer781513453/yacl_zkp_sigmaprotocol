@@ -30,15 +30,16 @@ bool SigmaProtocol::VerifyBatch(const std::vector<EcPoint>& statement,
 
   uint32_t i;
   bool res = true;
-  EcPoint RHS = group_ref_->MulBase(0_mp);
+
   switch (meta_.type) {
     // verify: rnd_statement[0] + challenge * statement[0] == (generator_ref_[0]
     // * proof.proof[0]) + ... + (generator_ref_[n] * proof.proof[n])
     case SigmaType::Dlog:
     case SigmaType::Pedersen:
-    case SigmaType::Representation:
+    case SigmaType::Representation: {
       YACL_ENFORCE((meta_.num_statement == 1) &&
                    (meta_.num_generator == meta_.num_witness));
+      EcPoint RHS = group_ref_->MulBase(0_mp);
       for (i = 0; i < meta_.num_witness; i++) {
         RHS = group_ref_->Add(
             RHS, group_ref_->Mul(generator_ref_[i], proof.proof[i]));
@@ -48,6 +49,7 @@ bool SigmaProtocol::VerifyBatch(const std::vector<EcPoint>& statement,
                           proof.rnd_statement[0]),
           RHS);
       break;
+    }
     // verify: rnd_statement[i] + challenge * statement[i] ==
     // generator_ref_[i] * proof.proof[i]
     case SigmaType::SeveralDlog:
